@@ -1,0 +1,39 @@
+﻿<!DOCTYPE html>
+<html>
+
+	<head>
+		
+		<title>UraniumFunctionViewer</title>
+		<script src="jquery-3.3.1.min.js"></script>
+		<script src="math.js"></script>
+		<link href="styles.css" type="text/css" rel="stylesheet" />
+		<link rel="icon" href="favicon.png">
+
+	</head>
+
+<body>
+	
+	<h1>UraniumFunctionViewer</h1>
+	
+	<select id="axisSelector">
+		<option selected value="1">y = </option>
+		<option value="0">x = </option>
+	</select>
+	
+	<input id="graphFunctionTextbox" type="text">
+	<input id="newGraphBtn" type="button" value="New graph">
+	<input id="addGraphBtn" type="button" value="Add graph">
+
+	<div id="graphsDiv"></div>
+	
+	<canvas id="display" width="500px" height="500px"></canvas><br><br>
+	
+	<b id="zoomText">Zoom: 200%</b><br>
+	<input type="button" value="Reset zoom" onclick="setZoom(100);"><br>
+	<input id="zoomSlider" type="range" min="20" max="400" value="200" step="5">
+	
+	<script src="index.js"></script>
+	
+</body>
+
+</html>
