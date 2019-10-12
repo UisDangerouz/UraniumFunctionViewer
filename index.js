@@ -1,30 +1,35 @@
 let display = document.getElementById('display');
 let ctx = display.getContext('2d');
 ctx.lineWidth = 4;
+ctx.font = "14px Arial";
 
 let displaySize = 500;
+//AREA THAT IS NOT RENDERED INSIDE THE SCREEN
+let displayMargin = 10;
 
 let cameraZoom = 100;
 let cameraX = 0;
 let cameraY = 0;
-let cameraAccuracy = 200;
+$('#cameraAccuracySelector').val(200);
+let cameraAccuracy = Number($('#cameraAccuracySelector').val());
 
 let graphs = [];
-let graphColors = ['red', 'green', 'blue', 'yellow']
+let graphColors = ['red', 'pink', 'blue', 'yellow', 'orange', 'white']
 graphs.push(['0', true]);
 graphs.push(['0', false]);
 
-let fps = 30;
+let fpsTarget = 30;
+let frames = 0;
+let fps = fpsTarget;
 
 let controls = [];
 
 function setZoom(value) {	
 	cameraZoom = value;
-	cameraZoom = Math.max(cameraZoom, 20);
-	cameraZoom = Math.min(cameraZoom, 400);
+	cameraZoom = Math.max(cameraZoom, 10);
+	cameraZoom = Math.min(cameraZoom, 500);
 
-	$('#zoomText').html('Zoom: ' + cameraZoom + '%')
-	$('#zoomSlider').val(cameraZoom)
+	$('#zoomText').html(cameraZoom + '%')
 }
 
 function line(x1, y1, x2, y2) {
@@ -44,8 +49,8 @@ function getCameraPerspective(x, y) {
 	
 	let zoom = cameraZoom / 5;
 
-	x = origin + x * zoom - cameraX;
-	y = origin - y * zoom + cameraY;
+	x = origin + (x - cameraX) * zoom;
+	y = origin - (y - cameraY) * zoom;
 	
 	return [x, y];
 }
@@ -53,7 +58,7 @@ function getCameraPerspective(x, y) {
 function renderGraphs() {
 	resetDisplay();
 
-	let viewRange = 2300 / cameraZoom;
+	let viewRange = (10 * (displaySize / 2 - displayMargin)) / cameraZoom;
 
 	for(let g = 0; g < graphs.length; g++) {
 
@@ -62,7 +67,7 @@ function renderGraphs() {
 
 		let yAxis = graphs[g][1];
 
-		let cameraModifier = (yAxis ? -cameraX : -cameraY) / cameraZoom * 5;
+		let cameraModifier = (yAxis ? -cameraX : -cameraY);
 
 		let lastX = undefined;
 		let lastY = undefined;
@@ -73,13 +78,15 @@ function renderGraphs() {
 			fValue = math.evaluate(replaceAll(graphFunction, (yAxis ? 'x' : 'y'), '(' + i + ')'))
 
 			if(yAxis) {
-				p = getCameraPerspective(i, fValue);
+				[x, y] = getCameraPerspective(i, fValue);
 			} else {
-				p = getCameraPerspective(fValue, i);
+				[x, y] = getCameraPerspective(fValue, i);
 			}
-			
-			x = p[0];
-			y = p[1]
+
+			drawValue = (yAxis ? y : x);
+			if(drawValue < displayMargin || drawValue > displaySize - displayMargin) {
+				continue;
+			}
 
 			//AXIS LINES ARE ALWAYS BLACK
 			if(g <= 1) {
@@ -94,6 +101,15 @@ function renderGraphs() {
 		}
 
 	}	
+
+	//CROSSHAIR AND INFO TEXT
+
+	ctx.fillStyle = 'white'
+	ctx.beginPath();
+	ctx.arc(displaySize / 2, displaySize / 2, 4, 0, Math.PI*2);
+	ctx.fill();
+
+	ctx.fillText(fps + ' FPS', 10, 20);
 }
 
 $(document).ready(() => {
@@ -101,8 +117,7 @@ $(document).ready(() => {
 	$(document).bind('mousewheel DOMMouseScroll', (e) => {
 		if (e.originalEvent.wheelDelta > 0 || e.originalEvent.detail < 0) {
 			setZoom(cameraZoom + 10);
-		}
-		else {
+		} else {
 			setZoom(cameraZoom - 10);
 		}
 		
@@ -115,27 +130,40 @@ $(document).ready(() => {
         controls[e.keyCode] = false;
     });
 	
+	$('#cameraAccuracySelector').on('change', () => {
+		cameraAccuracy = Number($('#cameraAccuracySelector').val());
+	});
 });
  
 //MAIN LOOP
 setInterval(() => {
-	let moveStep = 5;
+	let moveStep = 50 / cameraZoom;
 
-	if(controls[87]) {cameraY += moveStep;}
-	if(controls[65]) {cameraX -= moveStep;} 
-	if(controls[83]) {cameraY -= moveStep;} 
-	if(controls[68]) {cameraX += moveStep;}
+	if(controls[37]) {cameraX -= moveStep;}
+	if(controls[38]) {cameraY += moveStep;} 
+	if(controls[39]) {cameraX += moveStep;} 
+	if(controls[40]) {cameraY -= moveStep;}
 	if(controls[32]) {cameraX = 0; cameraY = 0;}
+
+	if(controls[173] || controls[109]) {setZoom(cameraZoom - 10);}
+	if(controls[171] || controls[107]) {setZoom(cameraZoom + 10);}
 
 	//console.log(cameraX, cameraY);
 
 	renderGraphs();
-}, 1000 / fps);
 
-function fixIncorrectVariables(yAxis) {
+	frames++;
+}, 1000 / fpsTarget);
+
+setInterval(() => {
+	fps = frames;
+	frames = 0;
+}, 1000);
+
+function fixIncorrectVariables(graph, yAxis) {
 	let graphFunction = $('#graphFunctionTextbox').val();
 
-	$('#graphFunctionTextbox').val(replaceAll(graphFunction, (yAxis ? 'y' : 'x'), (yAxis ? 'x' : 'y')))
+	return replaceAll(graphFunction, (yAxis ? 'y' : 'x'), (yAxis ? 'x' : 'y'));
 }
 
 function replaceAll(str, find, replace) {
@@ -143,20 +171,26 @@ function replaceAll(str, find, replace) {
 }
 
 function addGraph() {
-	let yAxis = Boolean(Number($('#axisSelector').val()));
-	fixIncorrectVariables(yAxis);
+	let input = $('#graphFunctionTextbox').val();
+	if(input.length == 0) {
+		return;
+	}
 
-	graphs.push([$('#graphFunctionTextbox').val(), yAxis]);
+	let yAxis = Boolean(Number($('#axisSelector').val()));
+	input = fixIncorrectVariables(input, yAxis);
+
+	graphs.push([input, yAxis]);
 	updateGraphsList();
 
 	renderGraphs();
+	$('#graphFunctionTextbox').val('');
 }
 
 function updateGraphsList() {
 	graphsHTML = '<p><b>Graphs:</b></p>';
 	for(let g = 2; g < graphs.length; g++) {
 		graphsHTML += '<span style="color: ' + graphColors[g % graphColors.length] + '">' + (g - 1) + '. ' + (graphs[g][1] ? 'y = ' : 'x = ') + graphs[g][0] + '</span>';
-		graphsHTML += '<input type="button" value="X" onclick="deleteGraph(' + g + ');"><br>'
+		graphsHTML += '<input type="button" value="X" onclick="deleteGraph(' + g + ');">'
 	}
 	$('#graphsDiv').html(graphsHTML);
 }
@@ -179,12 +213,12 @@ $('#addGraphBtn').click(() => {
 	addGraph();
 });
 
-
-
-$('#zoomSlider').change(() => {
-	setZoom($('#zoomSlider').val());
-});
-
+//RESET
 setZoom(cameraZoom);
+$('#axisSelector').val(1);
+$('#graphFunctionTextbox').val('sin(x)');
+addGraph();
+
+
 
 

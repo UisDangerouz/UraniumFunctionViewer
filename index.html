@@ -7,6 +7,7 @@
 		<script src="jquery-3.3.1.min.js"></script>
 		<script src="math.js"></script>
 		<link href="styles.css" type="text/css" rel="stylesheet" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<link rel="icon" href="favicon.png">
 
 	</head>
@@ -26,11 +27,19 @@
 
 	<div id="graphsDiv"></div>
 	
-	<canvas id="display" width="500px" height="500px"></canvas><br><br>
+	<canvas id="display" width="500px" height="500px"></canvas><br>
+
+	<p><b>Controls:</b> Move: arrow keys | Center camera: space | Zoom camera: plus/minus/scroll</p>
 	
-	<b id="zoomText">Zoom: 200%</b><br>
-	<input type="button" value="Reset zoom" onclick="setZoom(100);"><br>
-	<input id="zoomSlider" type="range" min="20" max="400" value="200" step="5">
+	<b>Camera Zoom:</b><span id="zoomText"></span><br>
+	<b>Camera Accuracy:</b>
+	<select id="cameraAccuracySelector">
+		<option value="400">Best</option>
+		<option selected value="200">Good</option>
+		<option value="100">Fast</option>
+		<option value="50">Poor</option>
+		<option value="20">Horrible</option>
+	</select>
 	
 	<script src="index.js"></script>
 	
